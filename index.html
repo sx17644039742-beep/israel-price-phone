@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Israel Phone Price Dashboard · Samsung / Xiaomi</title>
+<style>
+  :root {
+    --samsung-1: #3ea6ff; --samsung-2: #7c5cff;
+    --xiaomi-1: #ff9a3d; --xiaomi-2: #ff2e88;
+    --bg-0: #05070f; --bg-1: #0a0e1c;
+    --panel: rgba(255,255,255,0.045);
+    --border: rgba(255,255,255,0.09);
+    --text: #eef0fb; --muted: #8b93b8;
+    --accent-1: #7c3aed; --accent-2: #22d3ee;
+    --up: #ff5d7a; --down: #33e2a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(124,58,237,0.35), transparent 42%),
+      radial-gradient(circle at 92% 8%, rgba(34,211,238,0.22), transparent 40%),
+      radial-gradient(circle at 50% 110%, rgba(255,46,136,0.16), transparent 45%),
+      var(--bg-0);
+    color: var(--text); min-height: 100vh;
+  }
+  header { padding: 34px 36px 22px; }
+  header h1 {
+    margin: 0 0 8px; font-size: 25px; letter-spacing: 0.3px;
+    background: linear-gradient(90deg, #ffffff, #b9c2ff 45%, #7be8ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .container { max-width: 1300px; margin: 0 auto; padding: 6px 32px 70px; }
+  .glow-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    backdrop-filter: blur(10px); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.7);
+  }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .kpi-card { position: relative; border-radius: 16px; padding: 18px 20px; overflow: hidden; border: 1px solid var(--border);
+    background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01)); }
+  .kpi-card::before { content: ""; position: absolute; inset: -40%;
+    background: radial-gradient(circle, var(--glow-color, rgba(124,58,237,0.55)), transparent 60%); opacity: 0.5; filter: blur(6px); }
+  .kpi-card.total { --glow-color: rgba(124,58,237,0.55); }
+  .kpi-card.brands { --glow-color: rgba(34,211,238,0.5); }
+  .kpi-card.lowest { --glow-color: rgba(255,93,122,0.5); }
+  .kpi-card.avg { --glow-color: rgba(51,226,160,0.45); }
+  .kpi-card .kpi-inner { position: relative; z-index: 1; }
+  .kpi-card .kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.6px; text-transform: uppercase; }
+  .kpi-card .kpi-value { font-size: 30px; font-weight: 700; line-height: 1; color: #fff; }
+  .kpi-card .kpi-value .unit { font-size: 12px; font-weight: 400; opacity: 0.7; margin-left: 5px; }
+  .kpi-card .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 9px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 22px; }
+  .brand-card { padding: 18px 20px; position: relative; cursor: pointer; transition: transform .15s ease; }
+  .brand-card:hover { transform: translateY(-2px); }
+  .brand-card::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 2px; border-radius: 2px; }
+  .brand-card.Samsung::before { background: linear-gradient(90deg, var(--samsung-1), var(--samsung-2)); box-shadow: 0 0 12px var(--samsung-2); }
+  .brand-card.Xiaomi::before { background: linear-gradient(90deg, var(--xiaomi-1), var(--xiaomi-2)); box-shadow: 0 0 12px var(--xiaomi-2); }
+  .brand-card.is-active { border-color: rgba(255,255,255,0.35); box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 0 30px -6px rgba(124,58,237,0.6); }
+  .brand-card h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: #fff; }
+  .brand-card .price-row { font-size: 25px; font-weight: 700; margin-bottom: 4px; color: #fff; }
+  .brand-card .sub { font-size: 12px; color: var(--muted); line-height: 1.8; }
+  .brand-card a { color: #9db4ff; text-decoration: none; }
+  .brand-card a:hover { text-decoration: underline; }
+  .brand-card .hint { font-size: 10px; color: #5c6488; margin-top: 8px; }
+
+  .panel { padding: 20px; margin-bottom: 22px; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .panel h2 { margin: 0; font-size: 15px; font-weight: 600; color: #fff; }
+  .panel .panel-note { font-size: 11px; color: var(--muted); }
+  .badge-demo { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    background: rgba(34,211,238,0.15); color: #7fe6f7; border: 1px solid rgba(34,211,238,0.35); margin-left: 8px; }
+  .chart-wrap { max-width: 100%; height: 300px; }
+
+  /* Price Trend chart tooltip (hover on a data point shows model / config / date / price) */
+  .chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(16,19,31,0.97);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+    box-shadow: 0 14px 34px -10px rgba(0,0,0,0.7);
+    z-index: 30;
+    display: none;
+    white-space: nowrap;
+  }
+
+  .filter-bar { position: relative; z-index: 20; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; padding: 16px 18px; margin-bottom: 16px; }
+  .filter-field { display: flex; flex-direction: column; gap: 6px; min-width: 190px; }
+  .filter-field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); font-weight: 600; }
+  .filter-field select {
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px;
+    background: rgba(255,255,255,0.04); color: var(--text); cursor: pointer; min-width: 190px;
+  }
+  .filter-field select option { background: #10131f; color: var(--text); }
+  .filter-bar .spacer { flex: 1; }
+  .trend-filter-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+  .trend-filter-row .filter-field { min-width: 220px; }
+  .trend-filter-row select { min-width: 220px; }
+
+  /* Multi-select dropdown with search (Product Name filter) */
+  .ms-wrap { position: relative; min-width: 220px; }
+  .ms-button {
+    width: 100%; box-sizing: border-box; text-align: left;
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; background: rgba(255,255,255,0.04); color: var(--text); cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-button:hover { border-color: var(--accent-2); }
+  .ms-caret { font-size: 9px; color: var(--muted); flex-shrink: 0; }
+  .ms-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 60;
+    background: #10131f; border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 20px 44px -14px rgba(0,0,0,0.7);
+    width: 280px; padding: 10px;
+  }
+  .ms-panel[hidden] { display: none; }
+  .ms-search input {
+    width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; background: rgba(255,255,255,0.05); color: var(--text); margin-bottom: 8px;
+  }
+  .ms-search input:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(34,211,238,0.18); }
+  .ms-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ms-actions button {
+    flex: 1; font-size: 11px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); color: var(--muted); cursor: pointer;
+  }
+  .ms-actions button:hover { color: #fff; border-color: var(--accent-2); }
+  .ms-options { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+  .ms-option:hover { background: rgba(255,255,255,0.06); }
+  .ms-option input { accent-color: var(--accent-1); cursor: pointer; }
+  .ms-empty { padding: 10px 4px; text-align: center; color: var(--muted); font-size: 12px; }
+  .filter-bar .reset-btn {
+    border: 1px solid rgba(124,58,237,0.5);
+    background: linear-gradient(135deg, rgba(124,58,237,0.85), rgba(34,211,238,0.55));
+    color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  .filter-bar .export-btn {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text); padding: 10px 20px; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .filter-bar .export-btn:hover { border-color: var(--accent-2); color: #fff; }
+  .filter-bar .result-count { font-size: 12px; color: var(--muted); align-self: center; }
+
+  table { width: 100%; border-collapse: collapse; }
+  .table-scroll { max-height: 620px; overflow-y: auto; }
+  thead th {
+    text-align: left; background: #10131f; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted); padding: 12px 14px; cursor: pointer; white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 5;
+  }
+  thead th:hover { color: #fff; }
+  tbody td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; color: var(--text); }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #06070d; }
+  .badge.Samsung { background: linear-gradient(90deg, var(--samsung-1), var(--samsung-2)); color: #060a1a; }
+  .badge.Xiaomi { background: linear-gradient(90deg, var(--xiaomi-1), var(--xiaomi-2)); color: #1a0a06; }
+  .product-name { font-weight: 600; color: #fff; cursor: default; }
+  .config-pill { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 8px; background: rgba(255,255,255,0.06); color: #c7cce6; border: 1px solid var(--border); }
+  .price-main { font-weight: 700; color: #fff; }
+  .price-na { color: var(--muted); font-style: italic; font-size: 12px; }
+  .status-pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 12px; margin-left: 6px; }
+  .status-pill.coming_soon { background: rgba(34,211,238,0.15); color: #7fe6f7; border: 1px solid rgba(34,211,238,0.35); }
+  .status-pill.unavailable { background: rgba(139,147,184,0.15); color: var(--muted); border: 1px solid rgba(139,147,184,0.3); }
+  a.link {
+    color: #0b0f1a; text-decoration: none; font-size: 11.5px; font-weight: 700;
+    background: linear-gradient(90deg, var(--accent-2), #6ee7ff); padding: 5px 12px; border-radius: 8px;
+  }
+  a.link:hover { filter: brightness(1.1); }
+  .empty-row td { text-align: center; color: var(--muted); padding: 34px; }
+
+  /* Comparison / benchmark table */
+  .bm-diff-up { color: var(--up); font-weight: 700; }
+  .bm-diff-down { color: var(--down); font-weight: 700; }
+  .bm-model { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .bm-price { font-weight: 700; color: #fff; }
+
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 26px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Israel Phone Price Dashboard</h1>
+  <p id="header-sub">Samsung / Xiaomi · loading data...</p>
+</header>
+
+<div class="container">
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="summary-grid" id="summary-grid"></div>
+
+  <div class="glow-card panel">
+    <div class="panel-head">
+      <h2>Price Trend <span id="trend-days-badge" class="badge-demo" style="display:none;"></span></h2>
+      <span class="panel-note" id="trend-note"></span>
+    </div>
+    <div class="trend-filter-row">
+      <div class="filter-field">
+        <label>Brand (only affects this chart)</label>
+        <select id="trend-filter-brand"></select>
+      </div>
+      <div class="filter-field">
+        <label>Model (only affects this chart)</label>
+        <select id="trend-filter-model"><option value="">All (top 5 by listing order)</option></select>
+      </div>
+    </div>
+    <div class="chart-wrap" id="trendChartWrap" style="position:relative;">
+      <div id="trendChartInner" style="height:100%;"></div>
+      <div class="chart-tooltip" id="trendTooltip"></div>
+    </div>
+  </div>
+
+  <div class="glow-card panel">
+    <div class="panel-head">
+      <h2>Same-Tier Price Comparison <span class="panel-note">(manually paired same-tier models, prices are current mi-il.co.il / samsung.com listings)</span></h2>
+    </div>
+    <table id="benchmark-table">
+      <thead>
+        <tr>
+          <th>Xiaomi Model</th>
+          <th>Xiaomi Price</th>
+          <th>Samsung Model</th>
+          <th>Samsung Price</th>
+          <th>Samsung vs Xiaomi</th>
+        </tr>
+      </thead>
+      <tbody id="benchmark-body"></tbody>
+    </table>
+    <div class="panel-note" style="margin-top:10px;">只展示小米/三星两个品牌都能在以色列找到真实对应在售型号的配对行；只要有一边在以色列没有对应型号在卖，这一行就不会显示。每一格显示的配置都是以色列本地实际在售的真实配置（可能跟配对表最初假设的配置不完全一致，鼠标悬停型号名可查看具体说明），价格为当前采集到的标价。</div>
+  </div>
+
+  <div class="glow-card filter-bar">
+    <div class="filter-field">
+      <label>Product Name</label>
+      <div class="ms-wrap" id="ms-name"></div>
+    </div>
+    <div class="filter-field">
+      <label>Brand</label>
+      <select id="filter-brand"><option value="">All Brands</option></select>
+    </div>
+    <div class="filter-field">
+      <label>Status</label>
+      <select id="filter-status">
+        <option value="">All</option>
+        <option value="priced">Priced (in stock)</option>
+        <option value="coming_soon">Coming Soon</option>
+        <option value="unavailable">Unavailable / Where to buy</option>
+      </select>
+    </div>
+    <button class="reset-btn" id="reset-btn">Reset Filters</button>
+    <button class="export-btn" id="export-btn" title="Export the currently filtered/sorted table below as a CSV file">⭳ Export CSV</button>
+    <div class="spacer"></div>
+    <span class="result-count" id="result-count"></span>
+  </div>
+
+  <div class="glow-card" style="overflow:hidden;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="brand">Brand</th>
+            <th data-key="name">Product Name</th>
+            <th data-key="config">Config</th>
+            <th data-key="price">Price (ILS)</th>
+            <th data-key="source">Source</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer id="footer-note"></footer>
+</div>
+
+<script>
+const API_BASE = '';
+const EMBEDDED_DATA = {"scraped_at": "2026-07-10", "currency": "ILS", "products": [{"sku": "xi-redmi-a7-pro-4g-128g", "brand": "Xiaomi", "name": "Redmi A7 Pro", "price": 515.0, "url": "https://www.mi-il.co.il/product/redmia7pro4gb128gbblack", "source": "mi-il.co.il", "monitor": true, "config": "4G+128G"}, {"sku": "xi-poco-c81-pro-4g-64g", "brand": "Xiaomi", "name": "POCO C81 Pro", "price": 469.0, "url": "https://www.mi-il.co.il/product/pococ81pro4gb64gbblack", "source": "mi-il.co.il", "monitor": true, "config": "4G+64G"}, {"sku": "xi-poco-c81-pro-4g-128g", "brand": "Xiaomi", "name": "POCO C81 Pro", "price": 499.0, "url": "https://www.mi-il.co.il/product/pococ81pro4gb128gbblack", "source": "mi-il.co.il", "monitor": true, "config": "4G+128G"}, {"sku": "xi-xiaomi-17t-5g-12g-256g", "brand": "Xiaomi", "name": "Xiaomi 17T 5G", "price": 2199.0, "url": "https://www.mi-il.co.il/product/xiaomi17t5g12gb256gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+256G"}, {"sku": "xi-xiaomi-17t-5g-12g-512g", "brand": "Xiaomi", "name": "Xiaomi 17T 5G", "price": 2399.0, "url": "https://www.mi-il.co.il/product/xiaomi17t5g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-xiaomi-17t-pro-5g-12g-512g", "brand": "Xiaomi", "name": "Xiaomi 17T Pro 5G", "price": 3049.0, "url": "https://www.mi-il.co.il/product/xiaomi17tpro5g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-poco-x8-pro-max-5g-12g-256g", "brand": "Xiaomi", "name": "POCO X8 Pro Max 5G", "price": 2199.0, "url": "https://www.mi-il.co.il/product/pocox8promax5g12gb256gbwhite", "source": "mi-il.co.il", "monitor": true, "config": "12G+256G"}, {"sku": "xi-poco-x8-pro-max-5g-12g-512g", "brand": "Xiaomi", "name": "POCO X8 Pro Max 5G", "price": 2399.0, "url": "https://www.mi-il.co.il/product/pocox8promax5g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-poco-x8-pro-5g-12g-512g", "brand": "Xiaomi", "name": "POCO X8 Pro 5G", "price": 1899.0, "url": "https://www.mi-il.co.il/product/pocox8pro5g12gb512gbwhite", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-poco-x8-pro-5g-8g-512g", "brand": "Xiaomi", "name": "POCO X8 Pro 5G", "price": 1799.0, "url": "https://www.mi-il.co.il/product/pocox8pro5g8gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "8G+512G"}, {"sku": "xi-xiaomi-17-ultra-5g-16g-512g", "brand": "Xiaomi", "name": "Xiaomi 17 Ultra 5G", "price": 5449.0, "url": "https://www.mi-il.co.il/product/xiaomi17ultra5g16gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "16G+512G"}, {"sku": "xi-xiaomi-17-5g-12g-512g", "brand": "Xiaomi", "name": "Xiaomi 17 5G", "price": 3899.0, "url": "https://www.mi-il.co.il/product/xiaomi175g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-redmi-note-15-pro-5g-12g-512g", "brand": "Xiaomi", "name": "Redmi Note 15 Pro+ 5G", "price": 2179.0, "url": "https://www.mi-il.co.il/product/redminote15proplus5g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-redmi-note-15-pro-5g-8g-512g", "brand": "Xiaomi", "name": "Redmi Note 15 Pro 5G", "price": 1499.0, "url": "https://www.mi-il.co.il/product/redminote15pro5g8gb512gbtitanium", "source": "mi-il.co.il", "monitor": true, "config": "8G+512G"}, {"sku": "xi-redmi-note-15-pro-5g-8g-256g", "brand": "Xiaomi", "name": "Redmi Note 15 Pro 5G", "price": 1349.0, "url": "https://www.mi-il.co.il/product/redminote15pro5g8gb256gbblue", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-note-15-pro-8g-256g", "brand": "Xiaomi", "name": "Redmi Note 15 Pro", "price": 1159.0, "url": "https://www.mi-il.co.il/product/redminote15pro8gb256gbblack", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-note-15-8g-256g", "brand": "Xiaomi", "name": "Redmi Note 15", "price": 919.0, "url": "https://www.mi-il.co.il/product/redminote158gb256gbblack", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-poco-m8-5g-8g-512g", "brand": "Xiaomi", "name": "POCO M8 5G", "price": 1149.0, "url": "https://www.mi-il.co.il/product/pocom85g8gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "8G+512G"}, {"sku": "xi-poco-m8-5g-8g-256g", "brand": "Xiaomi", "name": "POCO M8 5G", "price": 999.0, "url": "https://www.mi-il.co.il/product/pocom85g8gb256gbblack", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-poco-f8-ultra-5g-16g-512g", "brand": "Xiaomi", "name": "POCO F8 Ultra 5G", "price": 3699.0, "url": "https://www.mi-il.co.il/product/pocof8ultra5g16gb512gbblue", "source": "mi-il.co.il", "monitor": true, "config": "16G+512G"}, {"sku": "xi-poco-f8-pro-5g-12g-512g", "brand": "Xiaomi", "name": "POCO F8 Pro 5G", "price": 2699.0, "url": "https://www.mi-il.co.il/product/pocof8pro5g12gb512gbsilver", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-poco-f7-5g-12g-256g", "brand": "Xiaomi", "name": "POCO F7 5G", "price": 1899.0, "url": "https://www.mi-il.co.il/product/pocof75g12gb256gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+256G"}, {"sku": "xi-poco-f7-pro-5g-12g-512g", "brand": "Xiaomi", "name": "POCO F7 Pro 5G", "price": 2699.0, "url": "https://www.mi-il.co.il/product/pocof7pro5g12gb512gbblack", "source": "mi-il.co.il", "monitor": true, "config": "12G+512G"}, {"sku": "xi-redmi-pad-2-97-4g-4g-128g", "brand": "Xiaomi", "name": "Redmi Pad 2 9.7 4G", "price": 849.0, "url": "https://www.mi-il.co.il/product/redmipad297in4g4gb128gbgray", "source": "mi-il.co.il", "monitor": true, "config": "4G+128G"}, {"sku": "xi-redmi-pad-2-4g-128g", "brand": "Xiaomi", "name": "Redmi Pad 2", "price": 849.0, "url": "https://www.mi-il.co.il/product/redmipad2-4gb128gbgray", "source": "mi-il.co.il", "monitor": true, "config": "4G+128G"}, {"sku": "xi-redmi-pad-2-4g-8g-256g", "brand": "Xiaomi", "name": "Redmi Pad 2 4G", "price": 1099.0, "url": "https://www.mi-il.co.il/product/redmipad2-4g-8gb256gbgray", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-pad-2-pro-8g-256g", "brand": "Xiaomi", "name": "Redmi Pad 2 Pro", "price": 1619.0, "url": "https://www.mi-il.co.il/product/redmipad2pro8gb256gbgray", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-pad-pro-5g-8g-256g", "brand": "Xiaomi", "name": "Redmi Pad Pro 5G", "price": 1799.0, "url": "https://www.mi-il.co.il/product/redmipadpro5g8gb256gbgreen", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-pad-pro-8g-256g", "brand": "Xiaomi", "name": "Redmi Pad Pro", "price": 1499.0, "url": "https://www.mi-il.co.il/product/redmipadpro8gb256gbgreen", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-redmi-pad-se-87-4g-64g", "brand": "Xiaomi", "name": "Redmi Pad SE 8.7", "price": 699.0, "url": "https://www.mi-il.co.il/product/redmipadse4gb64gbgray", "source": "mi-il.co.il", "monitor": true, "config": "4G+64G"}, {"sku": "xi-xiaomi-pad-8-8g-256g", "brand": "Xiaomi", "name": "Xiaomi Pad 8", "price": 2299.0, "url": "https://www.mi-il.co.il/product/xiaomipad88gb256gbgreen", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "xi-poco-pad-8g-256g", "brand": "Xiaomi", "name": "POCO Pad", "price": 1499.0, "url": "https://www.mi-il.co.il/product/pocopad8gb256blue", "source": "mi-il.co.il", "monitor": true, "config": "8G+256G"}, {"sku": "sa-galaxy-s26-ultra-16g-1t", "brand": "Samsung", "name": "Galaxy S26 Ultra", "price": 6199.0, "url": "https://www.samsung.com/il/smartphones/galaxy-s26-ultra/buy/", "source": "samsung.com/il", "monitor": true, "config": "16G+1T"}, {"sku": "sa-galaxy-s26-ultra-12g-512g", "brand": "Samsung", "name": "Galaxy S26 Ultra", "price": 4899.0, "url": "https://www.samsung.com/il/smartphones/galaxy-s26-ultra/buy/", "source": "samsung.com/il", "monitor": true, "config": "12G+512G"}, {"sku": "sa-galaxy-s26-12g-512g", "brand": "Samsung", "name": "Galaxy S26+", "price": 4499.0, "url": "https://www.samsung.com/il/smartphones/galaxy-s26/buy/", "source": "samsung.com/il", "monitor": true, "config": "12G+512G"}, {"sku": "sa-galaxy-a56-5g-8g-256g", "brand": "Samsung", "name": "Galaxy A56 5G", "price": 1550.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a56-5g-awesome-lightgray-256gb-sm-a566bzawmec/buy/", "source": "samsung.com/il", "monitor": true, "config": "8G+256G", "note": "以色列官网 A56 5G 只有 8GB 内存版本在售，没有 12GB 版本"}, {"sku": "sa-galaxy-a37-5g-8g-128g", "brand": "Samsung", "name": "Galaxy A37 5G", "price": 1130.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "source": "samsung.com/il", "monitor": true, "config": "8G+128G", "note": "以色列官网未找到 A37 5G 的独立商品页，价格取自以色列主流比价网站，配置为当地实际在售的 8G+128G（非 8G+256G）"}, {"sku": "sa-galaxy-a26-5g-8g-128g", "brand": "Samsung", "name": "Galaxy A26 5G", "price": 899.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a26-5g-black-128gb-sm-a266bzkimec/", "source": "samsung.com/il", "monitor": true, "config": "8G+128G", "note": "以色列官网只有「A26 5G」，没有单独的「A26 4G」型号"}, {"sku": "sa-galaxy-a17-8g-256g", "brand": "Samsung", "name": "Galaxy A17", "price": 729.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a17-light-blue-256gb-sm-a175flbomec/buy/", "source": "samsung.com/il", "monitor": true, "config": "8G+256G"}, {"sku": "sa-galaxy-a07-4g-128g", "brand": "Samsung", "name": "Galaxy A07", "price": 480.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "source": "samsung.com/il", "monitor": true, "config": "4G+128G", "note": "以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}, {"sku": "sa-galaxy-a07-4g-64g", "brand": "Samsung", "name": "Galaxy A07", "price": 399.0, "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "source": "samsung.com/il", "monitor": true, "config": "4G+64G", "note": "以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}, {"sku": "sa-galaxy-tab-s11-12g-256g", "brand": "Samsung", "name": "Galaxy Tab S11", "price": 2549.0, "url": "https://www.samsung.com/il/tablets/galaxy-tab-s/galaxy-tab-s11-silver-256gb-sm-x730nzsemec/", "source": "samsung.com/il", "monitor": true, "config": "12G+256G"}, {"sku": "sa-galaxy-tab-s11-12g-128g", "brand": "Samsung", "name": "Galaxy Tab S11", "price": 2199.0, "url": "https://www.samsung.com/il/tablets/galaxy-tab-s/galaxy-tab-s11-gray-128gb-sm-x736bzaamec/buy/", "source": "samsung.com/il", "monitor": true, "config": "12G+128G", "note": "128GB 版本价格为估算值（多家比价网站数据存在异常波动，未采信明显不合理的价格点）"}, {"sku": "sa-galaxy-tab-s10-fe-12g-256g", "brand": "Samsung", "name": "Galaxy Tab S10 FE+", "price": 1999.0, "url": "https://www.samsung.com/il/tablets/all-tablets/", "source": "samsung.com/il", "monitor": true, "config": "12G+256G", "note": "以色列官网未找到 Tab S10 FE+ 的独立商品页，价格取自以色列主流比价网站"}, {"sku": "sa-galaxy-tab-s10-fe-8g-128g", "brand": "Samsung", "name": "Galaxy Tab S10 FE", "price": 1365.0, "url": "https://www.samsung.com/il/tablets/all-tablets/", "source": "samsung.com/il", "monitor": true, "config": "8G+128G", "note": "以色列官网未找到 Tab S10 FE 的独立商品页，价格取自以色列主流比价网站"}, {"sku": "sa-galaxy-tab-s10-lite-8g-256g", "brand": "Samsung", "name": "Galaxy Tab S10 Lite", "price": 1499.0, "url": "https://www.samsung.com/il/tablets/all-tablets/", "source": "samsung.com/il", "monitor": true, "config": "8G+256G", "note": "以色列官网未找到 Tab S10 Lite 的独立商品页，价格取自以色列主流比价网站"}, {"sku": "sa-galaxy-tab-a11-8g-256g", "brand": "Samsung", "name": "Galaxy Tab A11+", "price": 1099.0, "url": "https://www.samsung.com/il/tablets/all-tablets/", "source": "samsung.com/il", "monitor": true, "config": "8G+256G", "note": "以色列官网未找到 Tab A11+ 的独立商品页，价格取自以色列主流比价网站"}, {"sku": "sa-galaxy-tab-a11-8g-128g", "brand": "Samsung", "name": "Galaxy Tab A11", "price": 659.0, "url": "https://www.samsung.com/il/tablets/all-tablets/", "source": "samsung.com/il", "monitor": true, "config": "8G+128G", "note": "以色列官网未找到 Tab A11 的独立商品页，价格取自以色列主流比价网站"}]};
+const EMBEDDED_HISTORY = {"xi-redmi-a7-pro-4g-128g": {"2026-07-10": 515.0}, "xi-poco-c81-pro-4g-64g": {"2026-07-10": 469.0}, "xi-poco-c81-pro-4g-128g": {"2026-07-10": 499.0}, "xi-xiaomi-17t-5g-12g-256g": {"2026-07-10": 2199.0}, "xi-xiaomi-17t-5g-12g-512g": {"2026-07-10": 2399.0}, "xi-xiaomi-17t-pro-5g-12g-512g": {"2026-07-10": 3049.0}, "xi-poco-x8-pro-max-5g-12g-256g": {"2026-07-10": 2199.0}, "xi-poco-x8-pro-max-5g-12g-512g": {"2026-07-10": 2399.0}, "xi-poco-x8-pro-5g-12g-512g": {"2026-07-10": 1899.0}, "xi-poco-x8-pro-5g-8g-512g": {"2026-07-10": 1799.0}, "xi-xiaomi-17-ultra-5g-16g-512g": {"2026-07-10": 5449.0}, "xi-xiaomi-17-5g-12g-512g": {"2026-07-10": 3899.0}, "xi-redmi-note-15-pro-5g-12g-512g": {"2026-07-10": 2179.0}, "xi-redmi-note-15-pro-5g-8g-512g": {"2026-07-10": 1499.0}, "xi-redmi-note-15-pro-5g-8g-256g": {"2026-07-10": 1349.0}, "xi-redmi-note-15-pro-8g-256g": {"2026-07-10": 1159.0}, "xi-redmi-note-15-8g-256g": {"2026-07-10": 919.0}, "xi-poco-m8-5g-8g-512g": {"2026-07-10": 1149.0}, "xi-poco-m8-5g-8g-256g": {"2026-07-10": 999.0}, "xi-poco-f8-ultra-5g-16g-512g": {"2026-07-10": 3699.0}, "xi-poco-f8-pro-5g-12g-512g": {"2026-07-10": 2699.0}, "xi-poco-f7-5g-12g-256g": {"2026-07-10": 1899.0}, "xi-poco-f7-pro-5g-12g-512g": {"2026-07-10": 2699.0}, "xi-redmi-pad-2-97-4g-4g-128g": {"2026-07-10": 849.0}, "xi-redmi-pad-2-4g-128g": {"2026-07-10": 849.0}, "xi-redmi-pad-2-4g-8g-256g": {"2026-07-10": 1099.0}, "xi-redmi-pad-2-pro-8g-256g": {"2026-07-10": 1619.0}, "xi-redmi-pad-pro-5g-8g-256g": {"2026-07-10": 1799.0}, "xi-redmi-pad-pro-8g-256g": {"2026-07-10": 1499.0}, "xi-redmi-pad-se-87-4g-64g": {"2026-07-10": 699.0}, "xi-xiaomi-pad-8-8g-256g": {"2026-07-10": 2299.0}, "xi-poco-pad-8g-256g": {"2026-07-10": 1499.0}, "sa-galaxy-s26-ultra-16g-1t": {"2026-07-10": 6199.0}, "sa-galaxy-s26-ultra-12g-512g": {"2026-07-10": 4899.0}, "sa-galaxy-s26-12g-512g": {"2026-07-10": 4499.0}, "sa-galaxy-a56-5g-8g-256g": {"2026-07-10": 1550.0}, "sa-galaxy-a37-5g-8g-128g": {"2026-07-10": 1130.0}, "sa-galaxy-a26-5g-8g-128g": {"2026-07-10": 899.0}, "sa-galaxy-a17-8g-256g": {"2026-07-10": 729.0}, "sa-galaxy-a07-4g-128g": {"2026-07-10": 480.0}, "sa-galaxy-a07-4g-64g": {"2026-07-10": 399.0}, "sa-galaxy-tab-s11-12g-256g": {"2026-07-10": 2549.0}, "sa-galaxy-tab-s11-12g-128g": {"2026-07-10": 2199.0}, "sa-galaxy-tab-s10-fe-12g-256g": {"2026-07-10": 1999.0}, "sa-galaxy-tab-s10-fe-8g-128g": {"2026-07-10": 1365.0}, "sa-galaxy-tab-s10-lite-8g-256g": {"2026-07-10": 1499.0}, "sa-galaxy-tab-a11-8g-256g": {"2026-07-10": 1099.0}, "sa-galaxy-tab-a11-8g-128g": {"2026-07-10": 659.0}};
+let allProducts = [];
+let sortKey = 'brand_name';
+let sortDir = 'asc';
+const trendCache = {};
+let lastTableRows = []; // the exact filtered+sorted rows currently shown in the table below, kept in sync by renderTable() — CSV export reads from here so it always matches what's on screen
+
+const state = { brand: '', status: '', name: [] };
+const trendState = { brand: 'Samsung', model: '' };
+const msUI = {}; // per-widget-instance-id UI state for the multi-select dropdown: { open, search }
+let msInstances = []; // populated each render() cycle, reused by open/close toggles
+
+const BRAND_COLOR_CYCLE = ['#7c5cff', '#22d3ee', '#ff2e88', '#ffb020', '#33e2a0'];
+const COMPARISON_MAPPING = [{"xiaomi": {"model_name": "Xiaomi 17 Ultra 5G", "config": "16G+512G", "url": "https://www.mi-il.co.il/product/xiaomi17ultra5g16gb512gbblack", "price": 5449.0, "note": "以色列小米官网没有名为「Xiaomi 17 Ultra」的完全对应型号，用「Xiaomi 17 Ultra 5G」代替；以色列实际在售配置为 16G+512G，非表格假设的 16G+1024G"}, "samsung": {"model_name": "Galaxy S26 Ultra", "config": "16G+1T", "url": "https://www.samsung.com/il/smartphones/galaxy-s26-ultra/buy/", "price": 6199.0}}, {"xiaomi": {"model_name": "Xiaomi 17 Ultra 5G", "config": "16G+512G", "url": "https://www.mi-il.co.il/product/xiaomi17ultra5g16gb512gbblack", "price": 5449.0, "note": "以色列小米官网没有名为「Xiaomi 17 Ultra」的完全对应型号，用「Xiaomi 17 Ultra 5G」代替"}, "samsung": {"model_name": "Galaxy S26 Ultra", "config": "12G+512G", "url": "https://www.samsung.com/il/smartphones/galaxy-s26-ultra/buy/", "price": 4899.0}}, {"xiaomi": {"model_name": "Xiaomi 17 5G", "config": "12G+512G", "url": "https://www.mi-il.co.il/product/xiaomi175g12gb512gbblack", "price": 3899.0, "note": "以色列小米官网没有名为「Xiaomi 17」的完全对应型号，用「Xiaomi 17 5G」代替"}, "samsung": {"model_name": "Galaxy S26+", "config": "12G+512G", "url": "https://www.samsung.com/il/smartphones/galaxy-s26/buy/", "price": 4499.0}}, {"xiaomi": {"model_name": "Xiaomi 17T Pro 5G", "config": "12G+512G", "url": "https://www.mi-il.co.il/product/xiaomi17tpro5g12gb512gbblack", "price": 3049.0, "note": "以色列小米官网没有名为「Xiaomi 17T Pro」的完全对应型号，用「Xiaomi 17T Pro 5G」代替"}, "samsung": null}, {"xiaomi": {"model_name": "Xiaomi 17T Pro 5G", "config": "12G+512G", "url": "https://www.mi-il.co.il/product/xiaomi17tpro5g12gb512gbblack", "price": 3049.0, "note": "以色列小米官网没有名为「Xiaomi 17T Pro」的完全对应型号，用「Xiaomi 17T Pro 5G」代替；以色列实际在售配置为 12G+512G，非表格假设的 12G+256G"}, "samsung": null}, {"xiaomi": {"model_name": "Xiaomi 17T 5G", "config": "12G+512G", "url": "https://www.mi-il.co.il/product/xiaomi17t5g12gb512gbblack", "price": 2399.0, "note": "以色列小米官网没有名为「Xiaomi 17T」的完全对应型号，用「Xiaomi 17T 5G」代替"}, "samsung": null}, {"xiaomi": {"model_name": "Redmi Note 15 Pro+ 5G", "config": "12G+512G", "url": "https://www.mi-il.co.il/product/redminote15proplus5g12gb512gbblack", "price": 2179.0}, "samsung": {"model_name": "Galaxy A56 5G", "config": "8G+256G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a56-5g-awesome-lightgray-256gb-sm-a566bzawmec/buy/", "price": 1550.0, "note": "以色列实际在售配置为 8G+256G，非表格假设的 12G+256G；以色列官网 A56 5G 只有 8GB 内存版本在售，没有 12GB 版本"}}, {"xiaomi": {"model_name": "Redmi Note 15 Pro 5G", "config": "8G+512G", "url": "https://www.mi-il.co.il/product/redminote15pro5g8gb512gbtitanium", "price": 1499.0, "note": "以色列实际在售配置为 8G+512G，非表格假设的 12G+256G"}, "samsung": {"model_name": "Galaxy A37 5G", "config": "8G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 1130.0, "note": "以色列实际在售配置为 8G+128G，非表格假设的 8G+256G；以色列官网未找到 A37 5G 的独立商品页，价格取自以色列主流比价网站，配置为当地实际在售的 8G+128G（非 8G+256G）"}}, {"xiaomi": {"model_name": "Redmi Note 15 Pro 5G", "config": "8G+256G", "url": "https://www.mi-il.co.il/product/redminote15pro5g8gb256gbblue", "price": 1349.0}, "samsung": {"model_name": "Galaxy A37 5G", "config": "8G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 1130.0, "note": "以色列实际在售配置为 8G+128G，非表格假设的 8G+256G；以色列官网未找到 A37 5G 的独立商品页，价格取自以色列主流比价网站，配置为当地实际在售的 8G+128G（非 8G+256G）"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy A26 5G", "config": "8G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a26-5g-black-128gb-sm-a266bzkimec/", "price": 899.0, "note": "以色列三星官网没有名为「Galaxy A26 4G」的完全对应型号，用「Galaxy A26 5G」代替；以色列实际在售配置为 8G+128G，非表格假设的 8G+256G；以色列官网只有「A26 5G」，没有单独的「A26 4G」型号"}}, {"xiaomi": {"model_name": "Redmi Note 15", "config": "8G+256G", "url": "https://www.mi-il.co.il/product/redminote158gb256gbblack", "price": 919.0}, "samsung": {"model_name": "Galaxy A17", "config": "8G+256G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a17-light-blue-256gb-sm-a175flbomec/buy/", "price": 729.0, "note": "以色列三星官网没有名为「Galaxy A17 4G」的完全对应型号，用「Galaxy A17」代替"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy A17", "config": "8G+256G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/galaxy-a17-light-blue-256gb-sm-a175flbomec/buy/", "price": 729.0, "note": "以色列三星官网没有名为「Galaxy A17 5G」的完全对应型号，用「Galaxy A17」代替"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy A07", "config": "4G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 480.0, "note": "以色列三星官网没有名为「Galaxy A07 5G」的完全对应型号，用「Galaxy A07」代替；以色列实际在售配置为 4G+128G，非表格假设的 6G+128G；以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy A07", "config": "4G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 480.0, "note": "以色列三星官网没有名为「Galaxy A07 4G」的完全对应型号，用「Galaxy A07」代替；以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}}, {"xiaomi": {"model_name": "Redmi A7 Pro", "config": "4G+128G", "url": "https://www.mi-il.co.il/product/redmia7pro4gb128gbblack", "price": 515.0}, "samsung": {"model_name": "Galaxy A07", "config": "4G+128G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 480.0, "note": "以色列三星官网没有名为「Galaxy A07 4G」的完全对应型号，用「Galaxy A07」代替；以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}}, {"xiaomi": {"model_name": "Redmi A7 Pro", "config": "4G+128G", "url": "https://www.mi-il.co.il/product/redmia7pro4gb128gbblack", "price": 515.0, "note": "以色列实际在售配置为 4G+128G，非表格假设的 4G+64G"}, "samsung": {"model_name": "Galaxy A07", "config": "4G+64G", "url": "https://www.samsung.com/il/smartphones/galaxy-a/", "price": 399.0, "note": "以色列三星官网没有名为「Galaxy A07 4G」的完全对应型号，用「Galaxy A07」代替；以色列官网未找到 A07 的独立商品页（可能只通过运营商/零售商渠道销售），价格取自以色列主流零售网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab S11", "config": "12G+256G", "url": "https://www.samsung.com/il/tablets/galaxy-tab-s/galaxy-tab-s11-silver-256gb-sm-x730nzsemec/", "price": 2549.0}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab S11", "config": "12G+128G", "url": "https://www.samsung.com/il/tablets/galaxy-tab-s/galaxy-tab-s11-gray-128gb-sm-x736bzaamec/buy/", "price": 2199.0, "note": "128GB 版本价格为估算值（多家比价网站数据存在异常波动，未采信明显不合理的价格点）"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab S10 FE+", "config": "12G+256G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 1999.0, "note": "以色列官网未找到 Tab S10 FE+ 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab S10 FE", "config": "8G+128G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 1365.0, "note": "以色列官网未找到 Tab S10 FE 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab S10 Lite", "config": "8G+256G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 1499.0, "note": "以色列官网未找到 Tab S10 Lite 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab A11+", "config": "8G+256G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 1099.0, "note": "以色列官网未找到 Tab A11+ 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab A11", "config": "8G+128G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 659.0, "note": "以色列官网未找到 Tab A11 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab A11", "config": "8G+128G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 659.0, "note": "以色列官网未找到 Tab A11 的独立商品页，价格取自以色列主流比价网站"}}, {"xiaomi": null, "samsung": {"model_name": "Galaxy Tab A11", "config": "8G+128G", "url": "https://www.samsung.com/il/tablets/all-tablets/", "price": 659.0, "note": "以色列官网未找到 Tab A11 的独立商品页，价格取自以色列主流比价网站"}}];
+
+
+function statusOf(p) {
+  if (p.price !== null && p.price !== undefined) return 'priced';
+  return p.status || 'unavailable';
+}
+
+async function boot() {
+  let data;
+  if (typeof EMBEDDED_DATA !== 'undefined' && EMBEDDED_DATA && EMBEDDED_DATA.products) {
+    data = EMBEDDED_DATA;
+  } else {
+    const res = await fetch(API_BASE + '/api/phones');
+    data = await res.json();
+  }
+  allProducts = data.products;
+
+  document.getElementById('footer-note').textContent =
+    `Sources: mi-il.co.il (Xiaomi/Redmi/POCO) + samsung.com/il (Samsung) · Scraped at ${data.scraped_at} · Price = listed price in ILS (₪) at time of scraping.`;
+
+  populateTrendFilters();
+  wireFilterEvents();
+  render();
+}
+
+function populateTrendFilters() {
+  const brandSel = document.getElementById('trend-filter-brand');
+  const brands = uniqueSorted(allProducts.map(p => p.brand));
+  if (!brands.includes(trendState.brand)) trendState.brand = brands[0] || '';
+  brandSel.innerHTML = brands.map(b => `<option value="${b}" ${trendState.brand === b ? 'selected' : ''}>${b}</option>`).join('');
+  populateTrendModelOptions();
+}
+
+function populateTrendModelOptions() {
+  const modelSel = document.getElementById('trend-filter-model');
+  const models = allProducts.filter(p => p.brand === trendState.brand && p.price !== null && p.price !== undefined);
+  if (!models.some(p => p.sku === trendState.model)) trendState.model = '';
+  modelSel.innerHTML = '<option value="">All (top 5 by listing order)</option>' +
+    models.map(p => `<option value="${p.sku}" ${trendState.model === p.sku ? 'selected' : ''}>${p.name}${p.config ? ' (' + p.config + ')' : ''}</option>`).join('');
+}
+
+function applyFilters(products) {
+  return products.filter(p => {
+    if (state.brand && p.brand !== state.brand) return false;
+    if (state.status && statusOf(p) !== state.status) return false;
+    if (state.name.length && !state.name.includes(p.name)) return false;
+    return true;
+  });
+}
+
+function uniqueSorted(arr) { return [...new Set(arr)].sort(); }
+
+// ---------- Multi-select-with-search dropdown widget (Product Name filter) ----------
+function ensureMsUI(id) {
+  if (!msUI[id]) msUI[id] = { open: false, search: '' };
+  return msUI[id];
+}
+
+function closeAllMsPanels() {
+  Object.values(msUI).forEach(ui => { ui.open = false; });
+}
+
+function msOptionsHtml(store, options, search, key) {
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  if (!filtered.length) return '<div class="ms-empty">No matches</div>';
+  return filtered.map(o => `
+    <label class="ms-option">
+      <input type="checkbox" value="${o.replace(/"/g, '&quot;')}" ${store[key].includes(o) ? 'checked' : ''} />
+      <span>${o}</span>
+    </label>
+  `).join('');
+}
+
+function toggleMsValue(store, key, val) {
+  const arr = store[key];
+  const idx = arr.indexOf(val);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(val);
+  render();
+}
+
+function renderMultiSelect(containerId, { store, key, options, allLabel }) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const ui = ensureMsUI(containerId);
+
+  const labelText = store[key].length === 0
+    ? allLabel
+    : store[key].length <= 2
+      ? store[key].join(', ')
+      : `${store[key].length} selected`;
+
+  container.innerHTML = `
+    <button type="button" class="ms-button">${labelText}<span class="ms-caret">▾</span></button>
+    <div class="ms-panel" ${ui.open ? '' : 'hidden'}>
+      <div class="ms-search"><input type="text" placeholder="Search..." value="${ui.search.replace(/"/g, '&quot;')}" /></div>
+      <div class="ms-actions">
+        <button type="button" data-act="all">Select All</button>
+        <button type="button" data-act="clear">Clear</button>
+      </div>
+      <div class="ms-options">${msOptionsHtml(store, options, ui.search, key)}</div>
+    </div>
+  `;
+
+  const btn = container.querySelector('.ms-button');
+  const panel = container.querySelector('.ms-panel');
+  const searchInput = container.querySelector('.ms-search input');
+  const optionsDiv = container.querySelector('.ms-options');
+  const actionsDiv = container.querySelector('.ms-actions');
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !ui.open;
+    closeAllMsPanels();
+    ui.open = willOpen;
+    msInstances.forEach(inst => renderMultiSelect(inst.id, inst));
+  });
+  panel.addEventListener('click', (e) => e.stopPropagation());
+
+  function wireOptionCheckboxes() {
+    optionsDiv.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => toggleMsValue(store, key, cb.value));
+    });
+  }
+  wireOptionCheckboxes();
+
+  // Typing in the search box only rebuilds the option list (not the whole
+  // widget), so the input never loses focus mid-keystroke.
+  searchInput.addEventListener('input', (e) => {
+    ui.search = e.target.value;
+    optionsDiv.innerHTML = msOptionsHtml(store, options, ui.search, key);
+    wireOptionCheckboxes();
+  });
+
+  actionsDiv.querySelector('[data-act="all"]').addEventListener('click', () => {
+    store[key] = options.slice();
+    render();
+  });
+  actionsDiv.querySelector('[data-act="clear"]').addEventListener('click', () => {
+    store[key] = [];
+    render();
+  });
+}
+
+document.addEventListener('click', () => {
+  if (Object.values(msUI).some(ui => ui.open)) {
+    closeAllMsPanels();
+    msInstances.forEach(inst => renderMultiSelect(inst.id, inst));
+  }
+});
+
+function render() {
+  const brandOptions = uniqueSorted(allProducts.map(p => p.brand));
+  const brandSelect = document.getElementById('filter-brand');
+  brandSelect.innerHTML = '<option value="">All Brands</option>' + brandOptions.map(b => `<option value="${b}" ${state.brand===b?'selected':''}>${b}</option>`).join('');
+  document.getElementById('filter-status').value = state.status;
+
+  // Product Name multi-select: drop any previously-selected names that no
+  // longer exist in the catalog, then (re)render the searchable dropdown.
+  const nameOptions = uniqueSorted(allProducts.map(p => p.name));
+  state.name = state.name.filter(v => nameOptions.includes(v));
+  msInstances = [
+    { id: 'ms-name', store: state, key: 'name', options: nameOptions, allLabel: 'All Products' },
+  ];
+  msInstances.forEach(inst => renderMultiSelect(inst.id, inst));
+
+  const filtered = applyFilters(allProducts);
+  renderKPI(filtered);
+  renderBrandCards(filtered);
+  try { renderTrendChart(); } catch (e) { console.warn('Trend chart skipped:', e); }
+  try { renderBenchmark(); } catch (e) { console.warn('Benchmark table skipped:', e); }
+  renderTable(filtered);
+
+  document.getElementById('header-sub').textContent =
+    `Samsung / Xiaomi · ${filtered.length} / ${allProducts.length} models matched`;
+}
+
+function renderKPI(filtered) {
+  const grid = document.getElementById('kpi-grid');
+  const priced = filtered.filter(p => p.price !== null && p.price !== undefined);
+  const brandsCovered = uniqueSorted(filtered.map(p => p.brand)).length;
+  const lowestOverall = priced.length ? Math.min(...priced.map(p => p.price)) : 0;
+  const avgOverall = priced.length ? (priced.reduce((s, p) => s + p.price, 0) / priced.length) : 0;
+
+  grid.innerHTML = `
+    <div class="glow-card kpi-card total"><div class="kpi-inner">
+      <div class="kpi-label">Total Products</div>
+      <div class="kpi-value">${filtered.length}<span class="unit">models</span></div>
+      <div class="kpi-sub">${priced.length} with a listed price, ${filtered.length - priced.length} coming soon / unavailable</div>
+    </div></div>
+    <div class="glow-card kpi-card brands"><div class="kpi-inner">
+      <div class="kpi-label">Brands Covered</div>
+      <div class="kpi-value">${brandsCovered}<span class="unit">brands</span></div>
+      <div class="kpi-sub">Samsung · Xiaomi</div>
+    </div></div>
+    <div class="glow-card kpi-card lowest"><div class="kpi-inner">
+      <div class="kpi-label">Lowest Price (Filtered)</div>
+      <div class="kpi-value">${lowestOverall.toFixed(0)}<span class="unit">ILS</span></div>
+      <div class="kpi-sub">Among models with a listed price</div>
+    </div></div>
+    <div class="glow-card kpi-card avg"><div class="kpi-inner">
+      <div class="kpi-label">Average Price (Filtered)</div>
+      <div class="kpi-value">${avgOverall.toFixed(0)}<span class="unit">ILS</span></div>
+      <div class="kpi-sub">Mean of priced models</div>
+    </div></div>
+  `;
+}
+
+function renderBrandCards(filtered) {
+  const grid = document.getElementById('summary-grid');
+  const brands = uniqueSorted(filtered.map(p => p.brand));
+  if (!brands.length) {
+    grid.innerHTML = `<div class="glow-card brand-card"><div class="sub">No products match the current filters</div></div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  brands.forEach(b => {
+    const items = filtered.filter(p => p.brand === b);
+    const priced = items.filter(p => p.price !== null && p.price !== undefined);
+    const isActive = state.brand === b;
+    const el = document.createElement('div');
+    el.className = 'glow-card brand-card ' + b + (isActive ? ' is-active' : '');
+    if (priced.length) {
+      const cheapest = priced.reduce((min, p) => p.price < min.price ? p : min, priced[0]);
+      const minPrice = Math.min(...priced.map(p=>p.price));
+      const avgPrice = priced.reduce((s,p)=>s+p.price,0) / priced.length;
+      el.innerHTML = `
+        <h3>${b}</h3>
+        <div class="price-row">${minPrice.toFixed(0)} <span style="font-size:12px;font-weight:400;color:var(--muted);">ILS from</span></div>
+        <div class="sub">
+          ${items.length} models total (${priced.length} priced) · avg ${avgPrice.toFixed(0)} ILS<br/>
+          Cheapest: <a href="${cheapest.url}" target="_blank" onclick="event.stopPropagation()">${cheapest.name}</a>
+        </div>
+        <div class="hint">Click to filter by this brand</div>
+      `;
+    } else {
+      el.innerHTML = `<h3>${b}</h3><div class="sub">${items.length} models, none currently priced</div><div class="hint">Click to filter by this brand</div>`;
+    }
+    el.addEventListener('click', () => {
+      state.brand = isActive ? '' : b;
+      render();
+    });
+    grid.appendChild(el);
+  });
+}
+
+async function getRealTrend(sku) {
+  if (trendCache[sku]) return trendCache[sku];
+  let series = null;
+  try {
+    const res = await fetch(`${API_BASE}/api/trend?sku=${encodeURIComponent(sku)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.series && data.series.length) series = data.series;
+    }
+  } catch (e) { /* no backend reachable (standalone file) */ }
+  if (!series) {
+    const hist = EMBEDDED_HISTORY[sku];
+    if (hist) series = Object.keys(hist).sort().map(d => ({ date: d, price: hist[d] }));
+  }
+  trendCache[sku] = series || [];
+  return trendCache[sku];
+}
+
+async function renderTrendChart() {
+  const wrap = document.getElementById('trendChartInner');
+  const outerWrap = document.getElementById('trendChartWrap');
+  const tooltip = document.getElementById('trendTooltip');
+  const note = document.getElementById('trend-note');
+  const badge = document.getElementById('trend-days-badge');
+  if (tooltip) tooltip.style.display = 'none';
+
+  const brandPool = allProducts.filter(p => p.brand === trendState.brand && p.price !== null && p.price !== undefined);
+  const pool = trendState.model ? brandPool.filter(p => p.sku === trendState.model) : brandPool;
+  const lines = trendState.model ? pool.slice(0, 1) : pool.slice(0, 5);
+  if (note) {
+    note.textContent = trendState.model
+      ? `Showing ${trendState.brand}: ${lines[0] ? lines[0].name : ''}${lines[0] && lines[0].config ? ' (' + lines[0].config + ')' : ''}`
+      : `Showing up to 5 priced ${trendState.brand} models`;
+  }
+
+  if (!wrap) return;
+  if (!lines.length) {
+    if (badge) badge.style.display = 'none';
+    if (outerWrap) outerWrap.style.height = '120px';
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;">No priced models for this brand yet</div>';
+    return;
+  }
+
+  const seriesList = await Promise.all(lines.map(p => getRealTrend(p.sku)));
+  const allDates = Array.from(new Set(seriesList.flatMap(s => s.map(pt => pt.date)))).sort();
+  const daysRecorded = allDates.length;
+
+  if (badge) {
+    badge.style.display = 'inline-block';
+    badge.textContent = daysRecorded <= 1 ? 'real data · 1 day recorded' : `real data · ${daysRecorded} days recorded`;
+  }
+
+  if (daysRecorded <= 1) {
+    // Single-day snapshot: this view is just a compact row of price cards
+    // (no line to draw yet), so it doesn't need the full 300px chart height
+    // — shrink the wrapper to fit the content instead of leaving a lot of
+    // empty space above/below.
+    if (outerWrap) outerWrap.style.height = '150px';
+    wrap.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;">
+        <div style="color:var(--muted);font-size:12.5px;max-width:640px;text-align:center;line-height:1.5;">
+          Only one real price snapshot has been recorded so far${allDates[0] ? ' (' + allDates[0] + ')' : ''}. A trend line needs at least two days of
+          real data — re-run the local update script on a later day and this turns into a real multi-point chart automatically.
+        </div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;justify-content:center;">
+          ${lines.map((p, li) => `<div style="text-align:center;">
+              <div style="width:10px;height:10px;border-radius:2px;background:${BRAND_COLOR_CYCLE[li % BRAND_COLOR_CYCLE.length]};margin:0 auto 6px;"></div>
+              <div style="font-size:20px;font-weight:700;color:#fff;">${p.price.toFixed(0)} ILS</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${p.name}${p.config ? ' · ' + p.config : ''}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Multi-day line chart needs the full height back.
+  if (outerWrap) outerWrap.style.height = '';
+
+  const labels = allDates;
+  const perSeries = seriesList.map(s => {
+    const byDate = Object.fromEntries(s.map(pt => [pt.date, pt.price]));
+    return labels.map(d => (d in byDate ? byDate[d] : null));
+  });
+  const allValues = perSeries.flat().filter(v => v !== null);
+  const rawMin = Math.min(...allValues), rawMax = Math.max(...allValues);
+  const pad = (rawMax - rawMin) * 0.12 || rawMax * 0.05 || 1;
+  const minV = rawMin - pad, maxV = rawMax + pad;
+
+  const width = 960, height = 300;
+  const m = { left: 56, right: 20, top: 16, bottom: 30 };
+  const plotW = width - m.left - m.right;
+  const plotH = height - m.top - m.bottom;
+  const xAt = i => m.left + (labels.length === 1 ? 0.5 : i / (labels.length - 1)) * plotW;
+  const yAt = v => m.top + plotH - ((v - minV) / (maxV - minV || 1)) * plotH;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">`;
+  const gridLines = 4;
+  for (let g = 0; g <= gridLines; g++) {
+    const gy = m.top + (plotH / gridLines) * g;
+    const val = maxV - (maxV - minV) * (g / gridLines);
+    svg += `<line x1="${m.left}" x2="${width - m.right}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    svg += `<text x="${m.left - 8}" y="${(gy + 3.5).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#8b93b8">${val.toFixed(0)}</text>`;
+  }
+  // The first/last date labels are anchored to the INSIDE edge (start/end)
+  // rather than centered on their point, so they don't get clipped by the
+  // card's rounded corners — same fix already applied on the other dashboards'
+  // identical chart code.
+  labels.forEach((lab, i) => {
+    const anchor = i === 0 ? 'start' : (i === labels.length - 1 ? 'end' : 'middle');
+    svg += `<text x="${xAt(i).toFixed(1)}" y="${height - 8}" text-anchor="${anchor}" font-size="10" fill="#8b93b8">${lab.slice(5)}</text>`;
+  });
+  // Hit-area circles are collected separately and appended AFTER every line's
+  // polygon/polyline/dot — SVG paints in document order, so an earlier line's
+  // hit circles would otherwise end up underneath a later line's filled area
+  // polygon and stop receiving hover events.
+  let hitCircles = '';
+  lines.forEach((p, li) => {
+    const series = perSeries[li];
+    const color = BRAND_COLOR_CYCLE[li % BRAND_COLOR_CYCLE.length];
+    const knownIdx = series.map((v, i) => v !== null ? i : null).filter(i => i !== null);
+    if (!knownIdx.length) return;
+    const points = knownIdx.map(i => `${xAt(i).toFixed(1)},${yAt(series[i]).toFixed(1)}`).join(' ');
+    const areaPoints = `${xAt(knownIdx[0]).toFixed(1)},${(m.top + plotH).toFixed(1)} ${points} ${xAt(knownIdx[knownIdx.length-1]).toFixed(1)},${(m.top + plotH).toFixed(1)}`;
+    svg += `<polygon points="${areaPoints}" fill="${color}22" stroke="none"/>`;
+    svg += `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lineLabel = `${p.name}${p.config ? ' · ' + p.config : ''}`;
+    knownIdx.forEach(i => {
+      const cx = xAt(i).toFixed(1), cy = yAt(series[i]).toFixed(1);
+      svg += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="${color}"/>`;
+      hitCircles += `<circle class="trend-point" data-label="${lineLabel}" data-date="${labels[i]}" data-price="${series[i].toFixed(2)}" cx="${cx}" cy="${cy}" r="9" fill="transparent" style="cursor:pointer;"/>`;
+    });
+  });
+  svg += hitCircles;
+  svg += `</svg>`;
+
+  const legend = `<div style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:6px;">` +
+    lines.map((p, li) => `<span style="font-size:12px;color:#c7cce6;display:inline-flex;align-items:center;gap:6px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${BRAND_COLOR_CYCLE[li % BRAND_COLOR_CYCLE.length]};"></span>
+        ${p.name}${p.config ? ' · ' + p.config : ''}
+      </span>`).join('') + `</div>`;
+
+  wrap.innerHTML = `<div style="height:${height - 34}px;">${svg}</div>${legend}`;
+  attachTrendTooltip(wrap, outerWrap, tooltip);
+}
+
+// Hovering a data point shows a small floating card with that exact line's
+// model+config, the hovered date, and the recorded price for that day.
+function attachTrendTooltip(innerEl, outerEl, tooltip) {
+  if (!innerEl || !outerEl || !tooltip) return;
+  innerEl.querySelectorAll('.trend-point').forEach(pt => {
+    pt.addEventListener('mousemove', (e) => {
+      tooltip.innerHTML = `
+        <div style="font-weight:600;color:#fff;">${pt.dataset.label}</div>
+        <div style="color:var(--muted);margin-top:2px;">${pt.dataset.date}</div>
+        <div style="font-weight:700;color:#fff;margin-top:2px;">${pt.dataset.price} ILS</div>
+      `;
+      tooltip.style.display = 'block';
+      const rect = outerEl.getBoundingClientRect();
+      let x = e.clientX - rect.left + 14;
+      let y = e.clientY - rect.top - 12;
+      const maxX = rect.width - 180;
+      if (x > maxX) x = e.clientX - rect.left - 14 - 170;
+      if (y < 4) y = 4;
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    });
+    pt.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  });
+}
+
+function renderTable(filtered) {
+  let rows = filtered.slice().sort((a, b) => {
+    if (sortKey === 'brand_name') {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      let c = a.brand.localeCompare(b.brand); if (c) return c * dir;
+      return a.name.localeCompare(b.name) * dir;
+    }
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === 'price') { av = av === null || av === undefined ? -Infinity : av; bv = bv === null || bv === undefined ? -Infinity : bv; }
+    if (av === null || av === undefined) av = '';
+    if (bv === null || bv === undefined) bv = '';
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  lastTableRows = rows;
+  document.getElementById('result-count').textContent = `${rows.length} results`;
+
+  const tbody = document.getElementById('table-body');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No products match the current filters</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(p => {
+    const priced = p.price !== null && p.price !== undefined;
+    const st = statusOf(p);
+    const nameTitle = p.note ? ` title="${p.note.replace(/"/g, '&quot;')}"` : '';
+    return `
+    <tr>
+      <td><span class="badge ${p.brand}">${p.brand}</span></td>
+      <td class="product-name"${nameTitle}>${p.name}</td>
+      <td>${p.config ? `<span class="config-pill">${p.config}</span>` : '<span class="price-na">-</span>'}</td>
+      <td>
+        ${priced ? `<div class="price-main">${p.price.toFixed(2)} ILS</div>` : `<span class="price-na">No listed price</span>`}
+        ${!priced && st !== 'priced' ? `<span class="status-pill ${st}">${st === 'coming_soon' ? 'Coming Soon' : 'Where to buy'}</span>` : ''}
+      </td>
+      <td class="config-line">${p.source}</td>
+      <td><a class="link" href="${p.url}" target="_blank">Visit ↗</a></td>
+    </tr>
+  `;
+  }).join('');
+}
+
+// ---------- Price Comparison (curated mapping from uploaded xlsx, matched
+// against real scraped Israel data — not computed by "nearest price") ----------
+function renderBenchmark() {
+  const tbody = document.getElementById('benchmark-body');
+  if (!tbody) return;
+
+  function diffCell(diff) {
+    const cls = diff >= 0 ? 'bm-diff-up' : 'bm-diff-down';
+    const sign = diff >= 0 ? '+' : '';
+    return `<span class="${cls}">${sign}${diff.toFixed(2)} ILS</span>`;
+  }
+  function cell(entry) {
+    if (!entry) return { name: '—', cfg: '', price: '—' };
+    // The caveat (fuzzy name match / real config differs from the mapping
+    // sheet's assumption / price sourced from a retailer rather than
+    // samsung.com directly) is kept as a hover tooltip on the model name
+    // rather than a visible note line — the real matched config is always
+    // shown in the row regardless, so no information is actually hidden.
+    const titleAttr = entry.note ? ` title="${entry.note.replace(/"/g, '&quot;')}"` : '';
+    return {
+      name: `<a href="${entry.url}" target="_blank"${titleAttr} style="color:#9db4ff;text-decoration:none;">${entry.model_name}</a>`,
+      cfg: entry.config,
+      price: entry.price.toFixed(2) + ' ILS',
+    };
+  }
+
+  // Only show rows where both brands have a real matched Israel product —
+  // if either side couldn't be matched to a real in-stock model, the whole
+  // row is dropped rather than shown with a "—" placeholder.
+  const completeRows = COMPARISON_MAPPING.filter(row => row.xiaomi && row.samsung);
+
+  if (!completeRows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No rows with both brands matched</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = completeRows.map(row => {
+    const x = cell(row.xiaomi);
+    const s = cell(row.samsung);
+    const sDiff = row.samsung.price - row.xiaomi.price;
+    return `
+      <tr>
+        <td class="product-name">${x.name}<div class="bm-model">${x.cfg}</div></td>
+        <td class="bm-price">${x.price}</td>
+        <td class="product-name">${s.name}<div class="bm-model">${s.cfg}</div></td>
+        <td class="bm-price">${s.price}</td>
+        <td>${diffCell(sDiff)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ---------- CSV export (exports exactly what's currently shown in the
+// product table below — same filters, same sort, same rows) ----------
+function downloadCSV(filename, header, rows) {
+  const escape = (v) => {
+    const s = (v === null || v === undefined) ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [header, ...rows].map(r => r.map(escape).join(','));
+  const csv = '\uFEFF' + lines.join('\r\n'); // UTF-8 BOM so Excel opens non-ASCII text correctly
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportTableCSV() {
+  const header = ['Brand', 'Product Name', 'Config', 'Price (ILS)', 'Source', 'URL'];
+  const rows = lastTableRows.map(p => [
+    p.brand,
+    p.name,
+    p.config || '',
+    (p.price !== null && p.price !== undefined) ? p.price.toFixed(2) : '',
+    p.source,
+    p.url,
+  ]);
+  const today = new Date().toISOString().slice(0, 10);
+  downloadCSV(`israel_phone_prices_${today}.csv`, header, rows);
+}
+
+function wireFilterEvents() {
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    state.brand = ''; state.status = ''; state.name = [];
+    render();
+  });
+  document.getElementById('export-btn').addEventListener('click', exportTableCSV);
+  document.getElementById('filter-brand').addEventListener('change', (e) => {
+    state.brand = e.target.value; render();
+  });
+  document.getElementById('filter-status').addEventListener('change', (e) => {
+    state.status = e.target.value; render();
+  });
+  document.querySelectorAll('thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key === 'name' ? 'brand_name' : th.dataset.key;
+      if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+      else { sortKey = key; sortDir = 'asc'; }
+      renderTable(applyFilters(allProducts));
+    });
+  });
+  // Trend-chart-only filters — these never touch `state`/render(), only trendState + renderTrendChart().
+  document.getElementById('trend-filter-brand').addEventListener('change', (e) => {
+    trendState.brand = e.target.value;
+    trendState.model = '';
+    populateTrendModelOptions();
+    try { renderTrendChart(); } catch (err) { console.warn('Trend chart skipped:', err); }
+  });
+  document.getElementById('trend-filter-model').addEventListener('change', (e) => {
+    trendState.model = e.target.value;
+    try { renderTrendChart(); } catch (err) { console.warn('Trend chart skipped:', err); }
+  });
+}
+
+boot();
+</script>
+
+</body>
+</html>
